@@ -21,6 +21,15 @@ jQuery(document).ready(function($) {
 		hrld_bylines_remove_user($(this));
 	});
 
+	$('#hrld_byline_input_guest_button').click(function(e) {
+		var value = $('#hrld_byline_input_guest').val();
+		if( !value)
+			return;
+		else
+			hrld_bylines_add_user(value, value, true);
+		return;
+	});
+
 	function hrld_bylines_replace_type( e, ui){
 		e.preventDefault();
 		$(this).val(ui.item.label);
@@ -39,12 +48,15 @@ jQuery(document).ready(function($) {
 		return ;
 
 	}
-	function hrld_bylines_add_user( display_name, id){
+	function hrld_bylines_add_user( display_name, id, guest){
 		if( hrld_bylines_verify_user(id)){
 			var rand = Math.floor((Math.random() * 100000) );
 			var listItemHTML  = '<li class="hrld_byline_current_author" hrld-byline-userid="' + id +'">'
-	 			listItemHTML += '<label>' + display_name + '</label>'
-				listItemHTML += '<a href="#'+rand+'" class="hrld_byline_current_author_remove" name="hrld_byline_current_author_remove_' + id + ' ">Remove</a>'
+	 			if( guest)
+	 				listItemHTML += '<label>' + display_name + ' (guest)</label>'
+	 			else
+	 				listItemHTML += '<label>' + display_name + '</label>'
+				listItemHTML += ' <a href="#'+rand+'" class="hrld_byline_current_author_remove" name="hrld_byline_current_author_remove_' + id + ' ">Remove</a>'
 				listItemHTML += '</li>'
 
 			$('#hrld_bylines_current_authors').append(listItemHTML);

@@ -10,12 +10,12 @@
 /**
  *
  *	Add Herald Bylines meta box to post edit screen
- *
+ *	and setup saving actio upon different hooks.
  *
  *
  */
-function hrld_bylines( $post){
-
+function hrld_bylines_setup(){
+	
 	/*add meta box */
 	add_meta_box(
 		'hrld-bylines-meta-box',
@@ -25,13 +25,27 @@ function hrld_bylines( $post){
 		'side',
 		'high'
 		);
+
+	/* Save! */
 	add_action( 'save_post', 'hrld_bylines_save_data');
 	add_action( 'pre_post_update', 'hrld_bylines_save_data');
 	add_action( 'edit_post', 'hrld_bylines_save_data');
 	add_action( 'publish_post', 'hrld_bylines_save_data');
 	add_action( 'edit_page_form', 'hrld_bylines_save_data');
-
 }
+
+add_action( 'load-post.php', 'hrld_bylines_setup' );
+add_action( 'load-post-new.php', 'hrld_bylines_setup' );
+
+function hrld_bylines(){
+	return;
+}
+function hrld_bylines_init( ){
+
+	return ;
+}
+add_action( 'init', 'hrld_bylines_init' );
+	
 
 /**
  *
@@ -57,27 +71,27 @@ function hrld_bylines( $post){
 
  		<li class="hrld_byline_no_byline"></li>
 
- 		<?php
- 		//create a random number for the remove button
+ 	<?php
+
+	//otherwise, generate list
+	else:
+
+	 	//create a random number for the remove button
  		//so the page doesn't jump.
  		$rand = rand(10000,99999);
-	 	//otherwise, generate list
-	 else:
-
-	 	
 
 	 	//for every user, create a <li>
 	 	foreach ($userMeta as $user) :
 	 	?>
 	 		<li class='hrld_byline_current_author' hrld-byline-userID=<?php echo $user['id']; ?> >
-	 			<label><?php echo $user['display_name']; ?></label>
+	 			<label><?php echo $user['display_name']; ?><?php echo $user['guest'] ? ' (guest)' : ''; ?></label>
 	 			<a href="#<?php echo $rand; ?>" class='hrld_byline_current_author_remove' 
 	 					name="hrld_byline_current_author_remove_<?php echo $user['id']; ?> ">Remove</a>
 	 		</li>
 	 	<?php
 
 	 		//save id into $userActive
-	 			$userActive[] = $user['id'];
+	 		$userActive[] = $user['id'];
 
 	 	endforeach;
 
@@ -87,8 +101,13 @@ function hrld_bylines( $post){
 
  	// create the HTML to add users
  	?>
-
- 	<input type="text" id="hrld_byline_input" placeholder="Type user name here..."/>
+ 	<hr>
+ 	<p><b>Existing author</b><br>choose and press enter</p>
+ 	<input type="text" id="hrld_byline_input" placeholder="Type name here..."/>
+ 	<hr>
+ 	<p><b>Can't find someone?</b><br>Just add the name below</p>
+ 	<input type="text" id="hrld_byline_input_guest" placeholder="Guest name"/>
+ 	<input type="button" id="hrld_byline_input_guest_button" class="button hrld_byline_input_guest_button" value="Add"/>
  	<input type="hidden" id="hrld_byline_active_user_list" name="hrld_byline_active_user_list" value="<?php echo implode(",", $userActive); ?>" />
  	<?php
  }
@@ -104,7 +123,7 @@ function hrld_bylines_get_active_users( $post){
 	//retrieve custom post metadata '_hrld_bylines'
  	$userIDsDelimited = get_post_meta($post->ID, '_hrld_bylines', true);
 
-	//return array(array('fullname' => 'Jason Chan', 'id' => '123'), array('fullname' => 'Will Haynes', 'id' => '321'));
+	//return array(array('display_name' => 'Jason Chan', 'id' => 'Jason Chan', 'guest' => true), array('display_name' => 'Will Haynes', 'id' => '321', 'guest' => false));
  	//if no userIDs are retrieved(ie. single user posts, old posts, new posts)
  	if( !$userIDsDelimited)
  		return '';
@@ -117,8 +136,12 @@ function hrld_bylines_get_active_users( $post){
 
  	//find the display name and id
  	foreach( $userIDs as $userID){
- 		$userFullNames[] = array('display_name' => get_user_meta( $userID, 'first_name', true).' '.get_user_meta( $userID, 'last_name', true), 
- 									'id' => $userID);
+ 		if( !is_numeric($userID))
+ 			$userFullNames[] = array('display_name' => $userID, 'id' => $userID, 'guest' => true);
+ 		else
+ 			$userFullNames[] = array('display_name' => get_user_meta( $userID, 'first_name', true).' '.get_user_meta( $userID, 'last_name', true), 
+ 										'id' => $userID,
+ 										'guest' => false);
  	}
  	return $userFullNames;
 }
@@ -165,13 +188,12 @@ add_action('admin_head', 'hrld_bylines_autocomplete_data', 10);
 function hrld_bylines_save_data( $post_id){
 
 	add_post_meta( $post_id, '_hrld_bylines', null, true);
-	if( isset($_POST['hrld_byline_active_user_list']))
+	if( isset($_POST['hrld_byline_active_user_list']) && $_POST['hrld_byline_active_user_list'])
 		update_post_meta( $post_id, '_hrld_bylines', $_POST['hrld_byline_active_user_list']);
 	else
-		update_post_meta( $post_id, '_hrld_bylines', '76');
+		delete_post_meta( $post_id, '_hrld_bylines');
 	return ;
 }
 
-add_action( 'load-post.php', 'hrld_bylines' );
-add_action( 'load-post-new.php', 'hrld_bylines' );
+
 
