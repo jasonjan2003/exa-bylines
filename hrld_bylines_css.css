@@ -1,0 +1,6 @@
+.ui-front{
+	z-index:1600000 !important;
+}
+.hrld_byline_no_byline:before{
+	content: "Multiple byline currently not in use";
+}
