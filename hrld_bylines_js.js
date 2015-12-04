@@ -4,7 +4,7 @@ jQuery(document).ready(function($) {
 
 	$('#hrld_byline_input').autocomplete({
 		source: hrld_bylines_all_users,
-		//focus: hrld_bylines_replace_type,
+		focus: hrld_bylines_replace_type,
 		select: function(event, ui){
 			hrld_bylines_replace_type(event, ui);
 			hrld_bylines_add_user(ui.item.label, ui.item.value);

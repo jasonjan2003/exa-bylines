@@ -25,6 +25,11 @@ function hrld_bylines( $post){
 		'side',
 		'high'
 		);
+	add_action( 'save_post', 'hrld_bylines_save_data');
+	add_action( 'pre_post_update', 'hrld_bylines_save_data');
+	add_action( 'edit_post', 'hrld_bylines_save_data');
+	add_action( 'publish_post', 'hrld_bylines_save_data');
+	add_action( 'edit_page_form', 'hrld_bylines_save_data');
 
 }
 
@@ -65,7 +70,7 @@ function hrld_bylines( $post){
 	 	foreach ($userMeta as $user) :
 	 	?>
 	 		<li class='hrld_byline_current_author' hrld-byline-userID=<?php echo $user['id']; ?> >
-	 			<label><?php echo $user['fullname']; ?></label>
+	 			<label><?php echo $user['display_name']; ?></label>
 	 			<a href="#<?php echo $rand; ?>" class='hrld_byline_current_author_remove' 
 	 					name="hrld_byline_current_author_remove_<?php echo $user['id']; ?> ">Remove</a>
 	 		</li>
@@ -98,22 +103,23 @@ function hrld_bylines_get_active_users( $post){
 	
 	//retrieve custom post metadata '_hrld_bylines'
  	$userIDsDelimited = get_post_meta($post->ID, '_hrld_bylines', true);
-//return array(array('fullname' => 'Jason Chan', 'id' => '123'), array('fullname' => 'Will Haynes', 'id' => '321'));
+
+	//return array(array('fullname' => 'Jason Chan', 'id' => '123'), array('fullname' => 'Will Haynes', 'id' => '321'));
  	//if no userIDs are retrieved(ie. single user posts, old posts, new posts)
- 	return '';
+ 	if( !$userIDsDelimited)
+ 		return '';
 
  	//explode metadata into array, delimited by ','
- 	$userIDs = explode(',', $usernamesDelimited);
+ 	$userIDs = explode(',', $userIDsDelimited);
 
  	//stores the full name and ID of users as 2-D array
- 	$userFullNames[] = array();
+ 	$userFullNames = array();
 
  	//find the display name and id
  	foreach( $userIDs as $userID){
- 		$userFullNames[]['fullName']  = get_user_meta($userID, 'display_name', true);
- 		$userFullNames[]['id'] = $userID;
+ 		$userFullNames[] = array('display_name' => get_user_meta( $userID, 'first_name', true).' '.get_user_meta( $userID, 'last_name', true), 
+ 									'id' => $userID);
  	}
-
  	return $userFullNames;
 }
 
@@ -155,4 +161,17 @@ function hrld_bylines_autocomplete_data(){
 }
 
 add_action('admin_head', 'hrld_bylines_autocomplete_data', 10);
-?>
+
+function hrld_bylines_save_data( $post_id){
+
+	add_post_meta( $post_id, '_hrld_bylines', null, true);
+	if( isset($_POST['hrld_byline_active_user_list']))
+		update_post_meta( $post_id, '_hrld_bylines', $_POST['hrld_byline_active_user_list']);
+	else
+		update_post_meta( $post_id, '_hrld_bylines', '76');
+	return ;
+}
+
+add_action( 'load-post.php', 'hrld_bylines' );
+add_action( 'load-post-new.php', 'hrld_bylines' );
+
