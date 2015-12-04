@@ -53,7 +53,9 @@ function hrld_bylines( $post){
  		<li class="hrld_byline_no_byline"></li>
 
  		<?php
-
+ 		//create a random number for the remove button
+ 		//so the page doesn't jump.
+ 		$rand = rand(10000,99999);
 	 	//otherwise, generate list
 	 else:
 
@@ -64,7 +66,7 @@ function hrld_bylines( $post){
 	 	?>
 	 		<li class='hrld_byline_current_author' hrld-byline-userID=<?php echo $user['id']; ?> >
 	 			<label><?php echo $user['fullname']; ?></label>
-	 			<a href="#" class='hrld_byline_current_author_remove' 
+	 			<a href="#<?php echo $rand; ?>" class='hrld_byline_current_author_remove' 
 	 					name="hrld_byline_current_author_remove_<?php echo $user['id']; ?> ">Remove</a>
 	 		</li>
 	 	<?php

@@ -41,9 +41,10 @@ jQuery(document).ready(function($) {
 	}
 	function hrld_bylines_add_user( display_name, id){
 		if( hrld_bylines_verify_user(id)){
+			var rand = Math.floor((Math.random() * 100000) );
 			var listItemHTML  = '<li class="hrld_byline_current_author" hrld-byline-userid="' + id +'">'
 	 			listItemHTML += '<label>' + display_name + '</label>'
-				listItemHTML += '<a href="#" class="hrld_byline_current_author_remove" name="hrld_byline_current_author_remove_' + id + ' ">Remove</a>'
+				listItemHTML += '<a href="#'+rand+'" class="hrld_byline_current_author_remove" name="hrld_byline_current_author_remove_' + id + ' ">Remove</a>'
 				listItemHTML += '</li>'
 
 			$('#hrld_bylines_current_authors').append(listItemHTML);
