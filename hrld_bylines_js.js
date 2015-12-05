@@ -30,9 +30,10 @@ jQuery(document).ready(function($) {
 
 	$('#hrld_byline_input_guest_button').click(function(e) {		//allow adding authors that does not have a username.
 		var value = $('#hrld_byline_input_guest').val();			//	this should be used on a post to post basis.
-		if( !value)													//	Therefore, guest author names are not compiled in any one database item. <- needs rephrase
-			return;
-		else
+		if( !value || !isNaN(value)){								//	Therefore, guest author names are not compiled in any one database item. <- needs rephrase
+			$('#hrld_byline_input_guest').val('');
+			alert('Guest names can\'t be a number.');
+		}else
 			hrld_bylines_add_user(value, value, true);				//third arg is guest=true
 		return;
 	});

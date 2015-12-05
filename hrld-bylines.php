@@ -32,6 +32,9 @@ function hrld_bylines_setup(){
 	add_action( 'edit_post', 'hrld_bylines_save_data');
 	add_action( 'publish_post', 'hrld_bylines_save_data');
 	add_action( 'edit_page_form', 'hrld_bylines_save_data');
+
+	/* Let old formats be processed! */
+	hrld_bylines_old_posts();
 }
 
 add_action( 'load-post.php', 'hrld_bylines_setup' );
@@ -40,11 +43,12 @@ add_action( 'load-post-new.php', 'hrld_bylines_setup' );
 function hrld_bylines(){
 	return;
 }
-function hrld_bylines_init( ){
+function hrld_bylines_activated_plugin( ){
 
+	hrld_bylines_old_posts();
 	return ;
 }
-add_action( 'init', 'hrld_bylines_init' );
+add_action( 'activated_plugin', 'hrld_bylines_activated_plugin' );
 	
 
 /**
@@ -110,6 +114,7 @@ add_action( 'init', 'hrld_bylines_init' );
  	<input type="button" id="hrld_byline_input_guest_button" class="button hrld_byline_input_guest_button" value="Add"/>
  	<input type="hidden" id="hrld_byline_active_user_list" name="hrld_byline_active_user_list" value="<?php echo implode(",", $userActive); ?>" />
  	<?php
+ 	hrld_bylines_old_posts();
  }
 
 /**
@@ -168,32 +173,136 @@ function hrld_bylines_autocomplete_data(){
 	wp_enqueue_style('hrld_bylines_css', plugin_dir_url( __FILE__ ) . 'hrld_bylines_css.css');
 
 
-	$users = array();
-
-	//retrieve all users
-	$allUsers = get_users(array('order'=>'ASC', 'orderby'=>'login', 'fields' => array('user_login','display_name', 'ID')));
-
-	//retrieve full name and ID and store them in $users as an array.
-	foreach( $allUsers as $user){
-		if( $user->display_name && $user->display_name != ' ')					//users without a display name shouldn't be used.
-			$users[] = array("label" => $user->display_name, "value" => $user->ID);
-	}
+	$users = hrld_bylines_get_all_valid_users();
 
 	// localize the all-user information for js use.
 	wp_localize_script('hrld_bylines_js','hrld_bylines_all_users', $users);
 }
+add_action( 'load-post.php', 'hrld_bylines_autocomplete_data' );
+add_action( 'load-post-new.php', 'hrld_bylines_autocomplete_data' );
 
-add_action('admin_head', 'hrld_bylines_autocomplete_data', 10);
+function hrld_bylines_get_all_valid_users( $js = true, $additionalFields = array() ){
 
-function hrld_bylines_save_data( $post_id){
+	global $wpdb;
+
+	$users = array();
+	$fields = array_merge(array('user_login','display_name', 'ID'), $additionalFields);
+	$badUsers = $wpdb->get_col(
+        "SELECT `ID` FROM $wpdb->users WHERE `display_name` LIKE \"% and %\" OR `display_name` LIKE \"% & %\" ORDER BY `ID` DESC"
+        );
+
+	//retrieve all users with exclusion
+	$allUsers = get_users(array('order'=>'ASC', 
+								'orderby'=>'login', 
+								'fields' => $fields,
+								'exclude'=> $badUsers
+								)
+				);
+
+	//retrieve full name and ID and store them in $users as an array. for js
+	
+	foreach( $allUsers as $user){
+		if( $user->display_name && $user->display_name != ' ')					//users without a display name shouldn't be used.
+			if( $js)
+				$users[] = array("label" => $user->display_name, "value" => $user->ID);
+			else{
+				$userMeta = array();
+				foreach( $fields as $field){
+					$userMeta[$field] = $user->$field;
+				}
+				$users[] = $userMeta;
+			}
+	}
+
+	return $users;
+}
+/*
+* 
+* 
+*
+*/
+function hrld_bylines_save_data( $post_id, $manualInput = false){
 
 	add_post_meta( $post_id, '_hrld_bylines', null, true);
 	if( isset($_POST['hrld_byline_active_user_list']) && $_POST['hrld_byline_active_user_list'])
 		update_post_meta( $post_id, '_hrld_bylines', $_POST['hrld_byline_active_user_list']);
-	else
+	else if( $manualInput != false){
+		update_post_meta( $post_id, '_hrld_bylines', $manualInput);
+	}else
 		delete_post_meta( $post_id, '_hrld_bylines');
 	return ;
 }
 
+function hrld_bylines_old_posts(){
 
+	global $wpdb;
+
+	$allUsers = hrld_bylines_get_all_valid_users( false, array('user_nicename'));						//false: don't format for js
+
+	if ( $badUsers = $wpdb->get_results(
+        "SELECT * FROM $wpdb->users WHERE (`display_name` LIKE \"% and %\") OR (`display_name` LIKE \"% & %\") OR (`display_name` LIKE \"% &amp; %\") ORDER BY `id` DESC", ARRAY_A
+ 	)){
+
+		foreach( $badUsers as $badUser){
+			$badUserID = $badUser['ID'];
+			$badUserDisplayName = $badUser['display_name'];
+			$badUserSeperateNames = array();
+			$goodUsers = array();	//Display name, id
+
+			//if have three+ authors( , , , ... and )
+			if( strpos($badUserDisplayName, ',') != -1){
+				$badUserDisplayName = str_replace(array(',and', ', and', ' & ', ' &amp; '), ' and ', $badUserDisplayName);
+				$badUserSeperateNames = explode(',', $badUserDisplayName);
+
+				//and the and at the last
+				$size = sizeof($badUserSeperateNames);
+				$lastTwoNames = explode(' and ', $badUserSeperateNames[ $size - 1]);
+				if( sizeof($lastTwoNames) == 2){
+					$badUserSeperateNames[ $size - 1] = $lastTwoNames[0];
+					$badUserSeperateNames[ $size    ] = $lastTwoNames[1];
+				}
+			}else{
+				$badUserDisplayName = str_replace(array(' & ',' &amp; ', ', And '), ' and ', $badUserDisplayName);
+				$badUserSeperateNames = explode(' and ', $badUserDisplayName);
+			}
+
+			
+			//attempts to match existing users.
+			$allUsersName = array_map(function($e){return $e['display_name'];}, $allUsers);
+			
+			//active user list
+			$activeList = '';
+
+			//print_r( $allUsersName);
+			foreach( $badUserSeperateNames as $count => $badUserSeperateName){
+				$key = array_search( trim($badUserSeperateName), $allUsersName);
+				if( $key !== false){
+					$goodUsers[] = array( 'display_name' => $allUsers[$key]['display_name'], 'id' => $allUsers[$key]['ID']);
+					$activeList .= $allUsers[$key]['ID']; 
+				}
+				else{
+					$goodUsers[] = array( 'display_name' => $badUserSeperateName, 'id' => $badUserSeperateName);
+					$activeList .= $badUserSeperateName;
+				}
+
+				if( $count != sizeof( $badUserSeperateNames)-1)
+					$activeList .= ',';
+			}
+			//get posts tied to this $badUser
+			$badUserPostIDs = get_posts( array(
+								'author'			=> $badUserID,
+								'posts_per_page'	=> -1,
+								'fields'			=> 'ids'
+				));
+ 			
+ 			foreach( $badUserPostIDs as $badUserPostID){
+ 				if( get_post_meta( $badUserPostID, '_hrld_bylines', true) == false)
+ 					hrld_bylines_save_data( $badUserPostID, $activeList);
+ 			}
+
+		}
+        return true;
+ 	}
+ 	return false;
+}
 
