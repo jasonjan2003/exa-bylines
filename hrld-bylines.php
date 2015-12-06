@@ -233,8 +233,18 @@ function hrld_bylines_save_data( $post_id, $manualInput = false){
 	return ;
 }
 
-
-function hrld_bylines_the_authors( $name = '', $link = false, $linkArgs = array()){
+/**
+ * front-end use of hrld_bylines. This function creates the byline in an article.
+ * while able to call this function directly, this function also filters the_author(), 
+ * a native Wordpress template tag. However, for individual author_links, call directly.
+ *
+ * @param (string)name. is the default author's name
+ * @param (boolean)link, optional. makes each author a link to the author page.
+ * @param (array)linkArgs, opt. inserts <a> attributes to help style the author links. ignored if $link = false
+ *
+ * @return (string) the new author link. or the default.
+ */
+function hrld_bylines_the_authors( $name, $link = false, $linkArgs = array()){
 
 	global $post;
 
@@ -266,6 +276,14 @@ function hrld_bylines_the_authors( $name = '', $link = false, $linkArgs = array(
 				$name .= ', ';
 			else if( $key < count($authors) -1)
 				$name .= ' and ';
+		}
+	}else{
+		if( !$name){
+			$user = get_userdata( $post->post_author);
+			if( $link)
+				$name = '<a href="' . $user->user_url . '" '. $attrs .'>' . $user->display_name . '</a>';
+			else
+				$name = $user->display_name;
 		}
 	}
 	return $name;
