@@ -233,6 +233,46 @@ function hrld_bylines_save_data( $post_id, $manualInput = false){
 	return ;
 }
 
+
+function hrld_bylines_the_authors( $name = '', $link = false, $linkArgs = array()){
+
+	global $post;
+
+	$authors = get_post_meta( $post->ID, '_hrld_bylines', true);
+	$attrs = '';
+	foreach( $linkArgs as $attr => $values){
+		$attrs .= $attr . '="' . $values . '" ';
+	}
+	if( $authors){
+		$name = '';
+		$authors = explode(',', $authors);
+		foreach( $authors as $key => $author){
+
+			$user = get_userdata( $author);
+			if( $user && $user->display_name){
+				if( $link)
+					$name .= '<a href="' . $user->user_url . '" '. $attrs .'>' . $user->display_name . '</a>';
+				else
+					$name .= $user->display_name;
+			}
+			else{
+				if( $link)
+					$name .= "<a $attrs >" . $author . "</span>";
+				else
+					$name .= $author;
+			}
+
+			if( $key < count($authors) -2 )
+				$name .= ', ';
+			else if( $key < count($authors) -1)
+				$name .= ' and ';
+		}
+	}
+	return $name;
+}
+add_filter('the_author', 'hrld_bylines_the_authors');
+add_filter( 'get_the_author_display_name', 'hrld_bylines_the_authors');
+
 function hrld_bylines_old_posts(){
 
 	global $wpdb;
