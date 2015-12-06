@@ -291,6 +291,30 @@ function hrld_bylines_the_authors( $name, $link = false, $linkArgs = array()){
 add_filter('the_author', 'hrld_bylines_the_authors');
 add_filter( 'get_the_author_display_name', 'hrld_bylines_the_authors');
 
+/**
+ * 
+ * retrieve the list of hrld_bylines users or, if not set, just the default user.
+ *
+ * @param none.
+ *
+ * @return (array) array of WP_User(s).
+ */
+function hrld_bylines_get_the_authors(){
+
+	global $post;
+	$authorsList = array();
+	$authors = get_post_meta( $post->ID, '_hrld_bylines', true);
+	if( $authors){
+		$authors = explode(',', $authors);
+		foreach( $authors as $key => $author){
+			$authorsList[] = get_userdata( $author);
+		}
+	}else
+		$authorsList = array( get_userdata( $post->post_author));
+
+	return $authorsList;
+}
+
 function hrld_bylines_old_posts(){
 
 	global $wpdb;
