@@ -32,9 +32,7 @@ function hrld_bylines_setup(){
 	add_action( 'edit_post', 'hrld_bylines_save_data');
 	add_action( 'publish_post', 'hrld_bylines_save_data');
 	add_action( 'edit_page_form', 'hrld_bylines_save_data');
-
-	/* Let old formats be processed! */
-	hrld_bylines_old_posts();
+	
 }
 
 add_action( 'load-post.php', 'hrld_bylines_setup' );
