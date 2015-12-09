@@ -125,28 +125,26 @@ add_action( 'activated_plugin', 'exa_bylines_activated_plugin' );
  */
 function exa_bylines_get_active_users( $post){
 	
-	//retrieve custom post metadata '_exa_bylines'
- 	$userIDsDelimited = get_post_meta($post->ID, '_exa_bylines', true);
+	//retrieve custom post metadata '_exa_byline'
+ 	$userIDs = get_post_meta($post->ID, '_exa_byline');
 
 	//return array(array('display_name' => 'Jason Chan', 'id' => 'Jason Chan', 'guest' => true), array('display_name' => 'Will Haynes', 'id' => '321', 'guest' => false));
  	//if no userIDs are retrieved(ie. single user posts, old posts, new posts)
- 	if( !$userIDsDelimited)
+ 	if( !$userIDs)
  		return '';
-
- 	//explode metadata into array, delimited by ','
- 	$userIDs = explode(',', $userIDsDelimited);
 
  	//stores the full name and ID of users as 2-D array
  	$userFullNames = array();
 
  	//find the display name and id
  	foreach( $userIDs as $userID){
- 		if( !is_numeric($userID))
- 			$userFullNames[] = array('display_name' => $userID, 'id' => $userID, 'guest' => true);
- 		else
+ 		
+ 		if( is_numeric($userID)){
  			$userFullNames[] = array('display_name' => get_user_meta( $userID, 'first_name', true).' '.get_user_meta( $userID, 'last_name', true), 
  										'id' => $userID,
  										'guest' => false);
+ 		}else
+ 			$userFullNames[] = array('display_name' => $userID, 'id' => $userID, 'guest' => true);
  	}
  	return $userFullNames;
 }
@@ -222,13 +220,34 @@ function exa_bylines_get_all_valid_users( $js = true, $additionalFields = array(
 */
 function exa_bylines_save_data( $post_id, $manualInput = false){
 
-	add_post_meta( $post_id, '_exa_bylines', null, true);
-	if( isset($_POST['exa_byline_active_user_list']) && $_POST['exa_byline_active_user_list'])
-		update_post_meta( $post_id, '_exa_bylines', $_POST['exa_byline_active_user_list']);
-	else if( $manualInput != false){
-		update_post_meta( $post_id, '_exa_bylines', $manualInput);
-	}else
-		delete_post_meta( $post_id, '_exa_bylines');
+	global $wpdb;
+	add_post_meta( $post_id, '_exa_bylines_all', null, true);
+
+	if( isset($_POST['exa_byline_active_user_list']) && $_POST['exa_byline_active_user_list']){
+		$activeList = $_POST['exa_byline_active_user_list'];
+	}else if( $manualInput == true){
+		$activeList = $manualInput;
+	}else{
+		delete_post_meta( $post_id, '_exa_bylines_all');
+		return;
+	}
+
+	update_post_meta( $post_id, '_exa_bylines_all', $activeList);
+	
+	$authors = explode(',', $activeList); 
+	delete_post_meta( $post_id, '_exa_byline');
+	foreach( $authors as $author){
+		add_post_meta( $post_id, '_exa_byline', $author, false);
+	}
+
+	// set primary author
+	foreach( $authors as $author){
+		if( is_numeric($author)){
+			$wpdb->update('wp_posts', array("post_author" => $author), array('ID' => $post_id));
+			return;
+		}
+	}
+
 	return ;
 }
 
@@ -248,7 +267,7 @@ function exa_bylines_the_authors( $name, $link = false, $linkArgs = array()){
 	global $post;
 
 	if( $post)
-		$authors = get_post_meta( $post->ID, '_exa_bylines', true);
+		$authors = get_post_meta( $post->ID, '_exa_bylines_all', true);
 	else 
 		return;
 	$attrs = '';
@@ -305,11 +324,11 @@ function exa_bylines_get_the_authors(){
 
 	global $post;
 	$authorsList = array();
-	$authors = get_post_meta( $post->ID, '_exa_bylines', true);
+	$authors = get_post_meta( $post->ID, '_exa_byline');
 	if( $authors){
-		$authors = explode(',', $authors);
-		foreach( $authors as $key => $author){
-			$authorsList[] = get_userdata( $author);
+		
+		foreach( $authors as $author){
+			$authorsList[] = get_userdata( $author) ? get_userdata( $author) : $author;
 		}
 	}else
 		$authorsList = array( get_userdata( $post->post_author));
@@ -388,7 +407,7 @@ function exa_bylines_old_posts(){
 				));
  			
  			foreach( $badUserPostIDs as $badUserPostID){
- 				if( get_post_meta( $badUserPostID, '_exa_bylines', true) == false)
+ 				if( get_post_meta( $badUserPostID, '_exa_bylines_all') == false)
  					exa_bylines_save_data( $badUserPostID, $activeList);
  			}
 
